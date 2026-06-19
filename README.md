@@ -231,3 +231,18 @@ Beyond service discovery and network access (covered above), here's how to inves
 **Known current gaps** (being addressed separately, noted here for transparency):
 - No systemd unit files yet — services don't start on boot or restart automatically on failure, and dependency ordering (A after B/C) is not enforced by the OS.
 
+### systemd Services
+- `service-a.service`, `service-b.service`, `service-c.service`
+- Each service runs under its own system user (`svc-a`, `svc-b`, `svc-c`)
+- Uses project virtual environment (`venv/bin/python3`)
+- Auto-restart enabled (`Restart=on-failure`)
+- Logs managed via `journalctl`
+
+### Service A Dependency Handling
+Service A now waits for Service B and C before starting:
+
+```ini
+After=network.target service-b.service service-c.service
+Wants=service-b.service service-c.service
+ExecStartPre=__INSTALL_DIR__/scripts/wait-for-dependencies.sh
+
