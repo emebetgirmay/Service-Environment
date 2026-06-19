@@ -230,5 +230,4 @@ Beyond service discovery and network access (covered above), here's how to inves
 
 **Known current gaps** (being addressed separately, noted here for transparency):
 - No systemd unit files yet — services don't start on boot or restart automatically on failure, and dependency ordering (A after B/C) is not enforced by the OS.
-- No `requirements.txt` committed.
-- `venv/` is currently tracked in git, which is not best practice and has already caused one pull conflict.
+
