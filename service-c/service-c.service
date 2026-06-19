@@ -1,0 +1,21 @@
+[Unit]
+Description=Service C - internal execution service (calls back to Service A)
+After=network.target
+
+[Service]
+Type=simple
+User=svc-c
+Group=svc-c
+WorkingDirectory=__INSTALL_DIR__
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__INSTALL_DIR__/venv/bin/python3 __INSTALL_DIR__/service-c/app.py
+
+Restart=on-failure
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=service-c
+
+[Install]
+WantedBy=multi-user.target
