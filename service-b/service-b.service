@@ -1,0 +1,21 @@
+[Unit]
+Description=Service B - internal forwarding service (forwards Service A's requests to Service C)
+After=network.target
+
+[Service]
+Type=simple
+User=svc-b
+Group=svc-b
+WorkingDirectory=__INSTALL_DIR__
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__INSTALL_DIR__/venv/bin/python3 __INSTALL_DIR__/service-b/app.py
+
+Restart=on-failure
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=service-b
+
+[Install]
+WantedBy=multi-user.target

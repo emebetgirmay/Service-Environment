@@ -1,0 +1,55 @@
+[Unit]
+Description=Service A - public-facing entry point (depends on Service B and Service C)
+
+# After= controls START ORDER ONLY: systemd will not attempt to start
+# service-a.service until service-b.service and service-c.service have
+# themselves been started. It does NOT guarantee that Flask inside
+# them has finished booting and is actually listening on its port yet
+# - systemd considers a unit "started" once the process has been
+# launched (Type=simple), not once the app inside it is ready for
+# traffic. That gap matters here because Service A's first real
+# request could arrive and immediately fail with failed_to_reach_b if
+# B's Flask app hasn't finished initializing yet, even though B's unit
+# is technically "active".
+#
+# See scripts/wait-for-dependencies.sh (invoked via ExecStartPre
+# below) for how this gap is closed at the application level.
+After=network.target service-b.service service-c.service
+
+# Wants= (not Requires=) is used deliberately. Requires= creates a
+# hard coupling where systemd will also STOP service-a if service-b or
+# service-c later stop or fail. That's the wrong behavior for this
+# assignment's failure-simulation scenario, where the instructor stops
+# a dependency mid-flight to see how the running system behaves - we
+# want Service A to stay up and visibly degrade (502 responses,
+# failed_to_reach_b/c error logs) rather than be killed by systemd
+# itself. Wants= still expresses the dependency and still triggers an
+# attempt to start service-b/service-c alongside service-a, without
+# that destructive coupling.
+Wants=service-b.service service-c.service
+
+[Service]
+Type=simple
+User=svc-a
+Group=svc-a
+WorkingDirectory=__INSTALL_DIR__
+Environment=PYTHONUNBUFFERED=1
+
+# ExecStartPre blocks here until Service B and Service C both answer
+# on /health, closing the "started vs. actually ready" gap described
+# above. If a dependency never comes up, this script exits non-zero
+# after a timeout and systemd will mark the start as failed (visible
+# in `systemctl status service-a` and the journal), rather than
+# silently launching Service A into a guaranteed-broken state.
+ExecStartPre=__INSTALL_DIR__/scripts/wait-for-dependencies.sh
+ExecStart=__INSTALL_DIR__/venv/bin/python3 __INSTALL_DIR__/service-a/app.py
+
+Restart=on-failure
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=service-a
+
+[Install]
+WantedBy=multi-user.target
