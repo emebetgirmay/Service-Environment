@@ -227,8 +227,6 @@ Beyond service discovery and network access (covered above), here's how to inves
 - Use the `trace_id` from the failing request to correlate logs across all three services and pinpoint exactly which hop failed and why (timeout, connection refused, unexpected status code).
 - `curl -v` directly against the suspected failing hop's hostname/port (e.g. `curl -v http://service-c.internal:3003/execute -d '{}'`) to isolate whether the problem is network-level or application-level.
 
-**Known current gaps** (being addressed separately, noted here for transparency):
-- No systemd unit files yet — services don't start on boot or restart automatically on failure, and dependency ordering (A after B/C) is not enforced by the OS.
 
 ### systemd Services
 - `service-a.service`, `service-b.service`, `service-c.service`
