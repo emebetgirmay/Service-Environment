@@ -75,7 +75,6 @@ Current status: there is **no automated install script yet** — deployment is m
 
 ## Operation
 
-**Current status:** services are run as plain foreground Python processes, not yet under systemd. There is no automatic start-on-boot or restart-on-failure — this is the main known gap in the current implementation.
 
 **Start services** (each in its own terminal, from the repo root):
 ```bash
