@@ -2,9 +2,12 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import uuid
+import os
 from datetime import datetime
 
 app = Flask(__name__)
+
+SERVICE_C_URL = os.environ.get("SERVICE_C_URL", "http://service-c:3003/execute")
 
 def log(level, event, trace_id, **kwargs):
     entry = {
@@ -23,13 +26,16 @@ def health():
 
 @app.route("/process", methods=["POST"])
 def process():
-    trace_id = request.headers.get("X-Trace-ID", str(uuid.uuid4()))
+    trace_id = request.headers.get("X-Request-ID") or request.headers.get("X-Trace-ID") or str(uuid.uuid4())
     log("INFO", "request_received", trace_id, path="/process")
     try:
         resp = requests.post(
-            "http://service-c.internal:3003/execute",
+            SERVICE_C_URL,
             json=request.get_json(),
-            headers={"X-Trace-ID": trace_id}
+            headers={
+                "X-Request-ID": trace_id,
+                "X-Trace-ID": trace_id
+            }
         )
         log("INFO", "forwarded_to_c", trace_id, status=resp.status_code)
         return jsonify({"status": "forwarded"})
@@ -39,9 +45,9 @@ def process():
 
 @app.errorhandler(404)
 def not_found(e):
-    trace_id = request.headers.get("X-Trace-ID", "unknown")
+    trace_id = request.headers.get("X-Request-ID") or request.headers.get("X-Trace-ID") or "unknown"
     log("WARN", "invalid_route", trace_id, path=request.path)
     return jsonify({"error": "not found"}), 404
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=3002)
+    app.run(host="0.0.0.0", port=3002)

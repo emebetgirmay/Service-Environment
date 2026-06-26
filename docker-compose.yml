@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      service-a:
+        condition: service_healthy
+    networks:
+      - production-net
+
+  service-a:
+    build:
+      context: .
+      dockerfile: service-a/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      service-b:
+        condition: service_healthy
+      service-c:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_B_URL=http://service-b:3002/process
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - production-net
+
+  service-b:
+    build:
+      context: .
+      dockerfile: service-b/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      service-c:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_C_URL=http://service-c:3003/execute
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - production-net
+
+  service-c:
+    build:
+      context: .
+      dockerfile: service-c/Dockerfile
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_A_URL=http://service-a:3001/callback
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - production-net
+
+networks:
+  production-net:
+    driver: bridge

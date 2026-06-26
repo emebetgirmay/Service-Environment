@@ -1,0 +1,13 @@
+# Python dependencies for Service-Environment
+#
+# HOW TO INSTALL:
+#   1. Create a virtual environment:  python3 -m venv venv-local
+#   2. Activate it:                   source venv-local/bin/activate
+#   3. Install dependencies:          pip install -r requirements.txt
+#
+# WHAT THESE PACKAGES DO:
+#   flask    = The web framework that runs our services (handles HTTP requests)
+#   requests = A library for making HTTP calls to other services (A calls B, etc.)
+
+flask
+requests
