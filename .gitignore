@@ -1,0 +1,38 @@
+# Python virtual environments
+venv/
+.venv/
+venv-local/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Guides and assignment validation files (commented out for group review)
+docs/BEGINNER_GUIDE.md
+# docs/CONTAINER_VALIDATION.md
+# docs/RUNNING_AND_TESTING.md
