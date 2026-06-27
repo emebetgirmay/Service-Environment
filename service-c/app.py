@@ -2,9 +2,12 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import uuid
+import os
 from datetime import datetime
 
 app = Flask(__name__)
+
+SERVICE_A_URL = os.environ.get("SERVICE_A_URL", "http://service-a:3001/callback")
 
 def log(level, event, trace_id, **kwargs):
     entry = {
@@ -23,13 +26,16 @@ def health():
 
 @app.route("/execute", methods=["POST"])
 def execute():
-    trace_id = request.headers.get("X-Trace-ID", str(uuid.uuid4()))
+    trace_id = request.headers.get("X-Request-ID") or request.headers.get("X-Trace-ID") or str(uuid.uuid4())
     log("INFO", "request_received", trace_id, path="/execute")
     try:
         resp = requests.post(
-            "http://service-a.internal:3001/callback",
+            SERVICE_A_URL,
             json={"result": "done", "processed_by": "service-c"},
-            headers={"X-Trace-ID": trace_id}
+            headers={
+                "X-Request-ID": trace_id,
+                "X-Trace-ID": trace_id
+            }
         )
         log("INFO", "callback_sent_to_a", trace_id, status=resp.status_code)
         return jsonify({"status": "executed"})
@@ -39,9 +45,9 @@ def execute():
 
 @app.errorhandler(404)
 def not_found(e):
-    trace_id = request.headers.get("X-Trace-ID", "unknown")
+    trace_id = request.headers.get("X-Request-ID") or request.headers.get("X-Trace-ID") or "unknown"
     log("WARN", "invalid_route", trace_id, path=request.path)
     return jsonify({"error": "not found"}), 404
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=3003)
+    app.run(host="0.0.0.0", port=3003)
