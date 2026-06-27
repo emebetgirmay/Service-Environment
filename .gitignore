@@ -33,6 +33,6 @@ dist/
 htmlcov/
 
 # Guides and assignment validation files (commented out for group review)
-# docs/BEGINNER_GUIDE.md
+docs/BEGINNER_GUIDE.md
 # docs/CONTAINER_VALIDATION.md
 # docs/RUNNING_AND_TESTING.md
