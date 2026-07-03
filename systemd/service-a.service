@@ -1,0 +1,17 @@
+[Unit]
+Description=Service A - Public API Gateway
+After=network.target service-b.service service-c.service
+Wants=service-b.service service-c.service
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/devops-lab/production-service-environment
+Environment=PATH=/home/ubuntu/devops-lab/production-service-environment/venv/bin
+ExecStart=/home/ubuntu/devops-lab/production-service-environment/venv/bin/python3 services/service-a/app.py
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=Service B - Internal Forwarding Service
+After=network.target service-c.service
+Wants=service-c.service
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/devops-lab/production-service-environment
+Environment=PATH=/home/ubuntu/devops-lab/production-service-environment/venv/bin
+ExecStart=/home/ubuntu/devops-lab/production-service-environment/venv/bin/python3 services/service-b/app.py
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
