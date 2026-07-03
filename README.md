@@ -173,3 +173,192 @@ Verify that your system works by performing these testing steps:
 *   **Python logs not showing up in real-time**:
     *   *Reason*: Output buffering is caching logs.
     *   *Fix*: Verify `ENV PYTHONUNBUFFERED=1` is present in the Dockerfiles or `PYTHONUNBUFFERED=1` is set in the environment variables of `docker-compose.yml`.
+
+---
+
+## 8. Container CI/CD Deployment
+
+This project uses GitHub Actions to automate quality checks, Docker image builds, image publishing, and deployment verification.
+
+### Architecture and Workflow
+
+The CI/CD pipeline ensures:
+- **Code Quality**: Python dependencies are installed and tested on every pull request.
+- **Build Verification**: Docker images build successfully before merging.
+- **Compose Stack Validation**: The full Docker Compose stack starts and health checks pass.
+- **Image Publishing**: Only successful merges to `main` publish versioned images to Docker Hub.
+- **Commit-Pinned Deployment**: Images are tagged with commit hashes for reproducible deployments.
+
+### GitHub Actions Workflow
+
+**Location**: `.github/workflows/container-ci-cd.yml`
+
+**Triggers**:
+- Pull requests to `main` branch
+- Pushes to `main` branch
+- Manual workflow dispatch
+
+**Jobs**:
+
+1. **`verify`** (Runs on PR and push):
+   - Sets up Python 3.12
+   - Installs dependencies from `requirements.txt`
+   - Runs tests if available
+   - Builds Docker images for each service
+   - **Fails the build** if any step fails, blocking merge
+
+2. **`verify-compose`** (Runs after verify):
+   - Validates `docker-compose.yml` syntax
+   - Builds the full Compose stack
+   - Starts all services
+   - Checks gateway health endpoint
+   - Cleans up resources
+
+3. **`publish`** (Runs only on main branch after compose verification):
+   - Logs into Docker Hub
+   - Builds and pushes service images with `sha-<short-commit-hash>` tags
+   - Adds OCI image labels (revision, source repository)
+   - Publishes deployment summary to job output
+
+### Setup: GitHub Repository Secrets and Variables
+
+Before CI/CD can publish images, configure these in your GitHub repository:
+
+**Navigate to**: `Settings` → `Secrets and variables` → `Actions`
+
+**Required Secret**:
+```
+DOCKERHUB_TOKEN = <your-dockerhub-personal-access-token>
+```
+[Generate token here](https://hub.docker.com/settings/security)
+
+**Required Variable**:
+```
+DOCKERHUB_USERNAME = <your-dockerhub-username>
+```
+
+### Local Development: Image Building
+
+To build images locally for testing:
+
+```bash
+# Build all services
+docker compose build
+
+# Build specific service
+docker compose build service-a
+
+# Build with no cache (fresh pull of base images)
+docker compose build --pull
+```
+
+### Production Deployment: Using Commit-Hash Tags
+
+Once images are published to Docker Hub by CI/CD, deploy using the production compose file:
+
+**Environment Setup**:
+```bash
+export DOCKERHUB_USERNAME=<your-dockerhub-username>
+export APP_NAME=service-environment
+```
+
+**Deploy from Docker Hub**:
+```bash
+# Using the deployment script
+./scripts/deploy.sh sha-a1b2c3d
+
+# Or manually with docker compose
+export IMAGE_TAG=sha-a1b2c3d
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
+```
+
+**Verify Deployment**:
+```bash
+# Check running services
+docker compose -f docker-compose.prod.yml ps
+
+# Check gateway health
+curl http://localhost:8080/service-a/health
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f service-a
+```
+
+**Stop Services**:
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+### Docker Image Tagging Strategy
+
+Images are tagged with the **short commit hash** for reproducibility:
+
+```
+DOCKERHUB_USERNAME/service-environment-service-a:sha-a1b2c3d
+DOCKERHUB_USERNAME/service-environment-service-b:sha-a1b2c3d
+DOCKERHUB_USERNAME/service-environment-service-c:sha-a1b2c3d
+```
+
+This ensures:
+- Every production deployment is pinned to a specific commit
+- Rolling back is as simple as redeploying an earlier commit hash
+- No ambiguity from floating tags like `latest`, `main`, or `dev`
+
+### Dockerfile Best Practices
+
+Each Dockerfile follows production-ready patterns:
+
+✓ **Version-pinned base images** (e.g., `python:3.12.3-slim`)
+✓ **Non-root user** for security
+✓ **Multi-stage builds** where applicable
+✓ **Minimal layer count** for image efficiency
+✓ **No hardcoded secrets**
+✓ **.dockerignore** excludes build artifacts and sensitive files
+✓ **EXPOSE** documents intended service port
+✓ **PYTHONUNBUFFERED** for real-time logging
+
+### Environment Variables
+
+**For CI/CD to work**, ensure `.env.example` documents all required variables:
+
+```bash
+cp .env.example .env
+```
+
+This example file is committed to the repository but the actual `.env` file is **never committed** (listed in `.gitignore`).
+
+### Troubleshooting CI/CD
+
+**Images not pushing to Docker Hub**:
+- Verify `DOCKERHUB_TOKEN` is a valid Personal Access Token (not your password)
+- Verify `DOCKERHUB_USERNAME` matches your Docker Hub account
+- Check the GitHub Actions job logs for authentication errors
+
+**Compose verification fails on local machine**:
+```bash
+# Validate compose file
+docker compose config
+
+# Rebuild with fresh base images
+docker compose build --pull
+
+# Check that ports are available
+netstat -an | grep 8080
+```
+
+**Tests blocking CI**:
+- If tests are not ready, they can be skipped temporarily (not recommended for production)
+- Add test files as `test_*.py` or `tests.py` in service directories for CI to automatically detect and run them
+
+### Deployment Checklist
+
+Before production deployment:
+
+- [ ] Commit and push code to `main`
+- [ ] GitHub Actions workflow completes successfully
+- [ ] Images appear in Docker Hub with `sha-<hash>` tag
+- [ ] Pull and inspect images locally: `docker pull DOCKERHUB_USERNAME/service-environment-service-a:sha-<hash>`
+- [ ] Run deployment script: `./scripts/deploy.sh sha-<hash>`
+- [ ] Verify services health: `curl http://localhost:8080/service-a/health`
+- [ ] Check logs for errors: `docker compose -f docker-compose.prod.yml logs`

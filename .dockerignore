@@ -1,10 +1,57 @@
+# Version control
 .git
+.gitignore
+.gitattributes
+
+# Python virtual environments
 venv
 .venv
 venv-local
+env
+ENV
+
+# Python build and cache
 __pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+htmlcov
+
+# Node.js (if used)
 node_modules
+npm-debug.log
+
+# Logs
 logs
-.env
 *.log
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# IDE and editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
 .DS_Store
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+
+# Documentation
+docs
