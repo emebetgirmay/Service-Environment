@@ -2,9 +2,14 @@ name: Container CI/CD
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/**
+
   workflow_dispatch:
 
 permissions:
