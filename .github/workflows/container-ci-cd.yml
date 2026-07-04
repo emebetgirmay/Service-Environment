@@ -84,8 +84,8 @@ jobs:
 
       - name: Check gateway health
         run: |
-          sleep 10
-          curl --fail http://localhost:8080/service-a/health || curl --fail http://localhost:8080/request
+          sleep 15
+          curl --fail http://localhost:8080/health || (docker compose logs && exit 1)
 
       - name: Check service logs
         if: failure()
