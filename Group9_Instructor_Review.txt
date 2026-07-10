@@ -1,0 +1,68 @@
+Instructor Review — Group 9: CI/CD for Containerized Microservices
+emebetgirmay/Service-Environment  ·  Rob  ·  8 July 2026
+Team — your container fundamentals are genuinely solid:
+	•	 patch-pinned bases, 
+	•	non-root users with fixed UIDs, 
+	•	health-gated startup in production Compose,
+	•	 an internal backend network, 
+	•	a deploy script that validates the tag format, 
+	•	and CI that dumps logs on failure.
+	•	
+ But two findings override the rest. First: there are no tests in this repository — your CI's test step is wrapped in an if-else that prints "No tests found, skipping" and passes, so the gate the assignment is built around does not exist. Second: your publish job pushes a :latest tag alongside the sha- tag — the exact anti-pattern the brief bans. This review is therefore a conditional grade with a clear path out.
+Scorecard
+Criterion
+Max
+Score
+Notes
+A. Pull Request CI
+10
+4
+Structure is right, but the test step always takes the skip branch because no test files exist. A gate that cannot fail is decoration.
+B. Compose verification
+10
+8
+Config, build --pull, up, health curl, teardown — plus a log dump on failure, which most groups forgot. sleep 15 instead of --wait.
+C. Image publishing
+10
+7
+sha- tags and OCI labels present — but :latest is pushed too, which the brief explicitly disallows for this workflow.
+D. Secrets & environment
+10
+8.5
+Nothing sensitive committed, .env gitignored — but .env.example is missing, and it's an explicit checklist item.
+E. Dockerfile quality
+10
+8.5
+python:3.12.3-slim pinned, non-root uid 1001, chown'd workdir. One shared requirements.txt feeds all three images.
+F. Production Compose
+10
+8.5
+Health-gated depends_on, internal backend, pinned nginx, restart policies — good. Variables aren't fail-loud, and dev builds a custom gateway image while prod mounts config into stock nginx.
+G. Deployment script
+10
+8.5
+Shebang, sha- prefix validation, helpful output. Folder-name APP_NAME default; no --wait.
+Documentation & traceability
+10
+6
+The README is long and well-structured — but there is no deployed-version record: no commit, no tag, no image names, no run link. A reviewer cannot reproduce your deployment.
+Total
+80
+59 (74%)
+Conditional — see bottom line
+What you did well
+	•	Production Compose is properly gated. Healthchecks with condition: service_healthy on every edge, internal backend, pinned gateway — this is better readiness discipline than several higher-scoring groups.
+	•	Failure produces evidence. Your verify-compose dumps container logs when the health check fails. Small step, real debugging value, and almost nobody else did it.
+	•	The deploy script validates its input. Rejecting tags that don't start with sha- makes the pinning rule mechanical.
+	•	Hardened images. Pinned base, fixed non-root UID, owned filesystem. The container itself is production-shaped.
+What to fix — and why it matters
+1. Write tests. This is the gate between you and a pass. Why it matters: the workflow says if test files exist, run pytest; else skip — and none exist, so every run to date has skipped. A service that crashes on boot would still publish with green CI. The brief's minimum standard requires CI to run tests before the image build; a skip message is not tests. (The condition is also broken — a quoted glob like "path/test_*.py" never matches — so even adding files wouldn't arm the gate as written.) Path forward: add pytest tests per service — /health, the downstream call with a mocked upstream, one failure path — pin pytest in a requirements-dev file, and replace the if-else with an unconditional pytest so missing tests fail loudly instead of skipping politely.
+2. Stop publishing :latest. Why it matters: the assignment bans latest because it's a moving pointer — two machines pulling "the same" image can get different bits, which destroys the traceability the sha- tag exists to provide. Publishing both means the forbidden path stays available to anyone who takes it. Path forward: delete the :latest line from the tags block and remove existing latest tags from Docker Hub.
+3. Create the deployment record. Why it matters: the submission requires commit hash, image tag, image names, and the Actions run link — yours has none, so a Saturday reviewer has nothing to verify against. .env.example is missing too, and it's on the same checklist. Path forward: after fix #1 lands and a real run publishes, add the "Latest deployed version" section with the run link, and commit a .env.example documenting DOCKERHUB_USERNAME, APP_NAME, IMAGE_TAG.
+4. Unify the gateway. Dev builds your custom nginx image; prod mounts config into stock nginx — CI verifies a gateway production never runs. Pick one (publishing the custom image sha-tagged is the stronger choice) and use it in both.
+Collaboration & review hygiene
+Four people show up in the history — Rita, Joy, Alice, and Emebet — and both PRs were cross-merged (Alice merged the CI/CD PR, Rita merged containerization). That's the right pattern. But there are only two PRs against nineteen commits, meaning most work went straight to main without review, and the CI workflow has a single author (Alice). One commit is also authored as "Your Name <your@email.com>" — fix your git identity config; it matters for exactly the traceability this assignment teaches.
+Before Saturday: branch protection requiring one approval, everything through PRs, and have someone other than Alice author the test fix in #1 with Alice reviewing — so at least two of you can defend the pipeline.
+Bottom line
+59/80 (74%) — conditional. As submitted this does not meet the minimum standard, because CI does not run tests — and the frustrating part is that everything around that gap is solid: your production Compose and container hardening beat several passing groups. 
+Land real tests (#1), drop :latest (#2), and write the deployment record (#3) before Saturday, and this moves to a comfortable pass with some of the better runtime discipline in the cohort. The skip branch has to go first.
