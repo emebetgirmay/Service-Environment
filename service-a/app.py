@@ -42,6 +42,8 @@ def log_response(response):
 def health():
     return jsonify({"service": "service-a", "status": "ok"})
 
+from opentelemetry import trace
+
 @app.route("/request", methods=["POST"])
 def handle_request():
     try:
@@ -56,7 +58,14 @@ def handle_request():
             }
         )
         log("INFO", "forwarded_to_b", status=resp.status_code)
-        return jsonify({"status": "accepted", "trace_id": request.headers.get("traceparent", "otel-propagated")})
+        
+        # Extract the actual trace ID from the active OpenTelemetry context
+        current_span = trace.get_current_span()
+        trace_id_hex = "otel-propagated"
+        if current_span and current_span.get_span_context().is_valid:
+            trace_id_hex = format(current_span.get_span_context().trace_id, '032x')
+            
+        return jsonify({"status": "accepted", "trace_id": trace_id_hex})
     except Exception as e:
         log("ERROR", "failed_to_reach_b", error=str(e))
         return jsonify({"error": "service-b unavailable"}), 502
