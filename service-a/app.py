@@ -4,8 +4,10 @@ import json
 import uuid
 import os
 from datetime import datetime
+from shared.observability import register_observability
 
 app = Flask(__name__)
+register_observability(app, "service-a")
 
 SERVICE_B_URL = os.environ.get("SERVICE_B_URL", "http://service-b:3002/process")
 
