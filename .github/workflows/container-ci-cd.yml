@@ -14,6 +14,7 @@ jobs:
   verify:
     name: Verify code, build, and containers
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         include:
@@ -45,7 +46,7 @@ jobs:
       - name: Run tests
         run: pytest ${{ matrix.path }} -v --tb=short
 
-      - name: Lint with flake8 (optional)
+      - name: Lint with flake8
         run: |
           pip install flake8
           flake8 ${{ matrix.path }} \
@@ -70,7 +71,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate Compose file
+      - name: Validate Compose configuration
         run: docker compose config
 
       - name: Build Compose stack
@@ -82,38 +83,46 @@ jobs:
 
           if ! docker compose up -d --wait --wait-timeout 120; then
             echo "===== Docker Compose Status ====="
-            docker compose ps
+            docker compose ps -a
 
-            echo "===== Docker Compose Logs ====="
-            docker compose logs
+            echo "===== service-a logs ====="
+            docker compose logs service-a || true
 
-            echo "===== Service-A Inspect ====="
-            docker inspect service-environment-service-a-1 || true
+            echo "===== service-b logs ====="
+            docker compose logs service-b || true
 
-            echo "===== Service-B Inspect ====="
-            docker inspect service-environment-service-b-1 || true
+            echo "===== service-c logs ====="
+            docker compose logs service-c || true
 
-            echo "===== Service-C Inspect ====="
-            docker inspect service-environment-service-c-1 || true
+            echo "===== nginx logs ====="
+            docker compose logs nginx || true
 
-            echo "===== Nginx Inspect ====="
-            docker inspect service-environment-nginx-1 || true
+            echo "===== prometheus logs ====="
+            docker compose logs prometheus || true
 
-            echo "===== Prometheus Inspect ====="
-            docker inspect service-environment-prometheus-1 || true
+            echo "===== grafana logs ====="
+            docker compose logs grafana || true
 
-            echo "===== Grafana Inspect ====="
-            docker inspect service-environment-grafana-1 || true
+            echo "===== service-c health ====="
+            docker inspect \
+              --format='{{json .State.Health}}' \
+              service-environment-service-c-1 || true
 
             exit 1
           fi
 
       - name: Show running services
-        run: docker compose ps
+        run: docker compose ps -a
 
       - name: Check gateway health
         run: |
           curl --fail http://localhost:8080/health
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs
 
       - name: Stop Compose stack
         if: always()
@@ -170,6 +179,7 @@ jobs:
       - name: Write deployment summary
         run: |
           echo "### Published Image" >> "$GITHUB_STEP_SUMMARY"
-          echo "Service: ${{ matrix.service }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Image: \`${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-${{ matrix.service }}:sha-${SHORT_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Full commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Service:** ${{ matrix.service }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** \`${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-${{ matrix.service }}:sha-${SHORT_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
