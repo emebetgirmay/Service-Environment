@@ -1,8 +1,8 @@
 services:
   nginx:
     build:
-      context: ./nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nginx/Dockerfile
     ports:
       - "8080:80"
     restart: unless-stopped
@@ -68,6 +68,16 @@ services:
       timeout: 2s
       retries: 5
       start_period: 2s
+    networks:
+      - production-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped
     networks:
       - production-net
 
