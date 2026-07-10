@@ -76,10 +76,10 @@ docker compose -f docker-compose.prod.yml pull || {
     exit 1
 }
 
-# Start the services
+# Start the services and block until healthchecks pass (or time out)
 print_info "Starting services..."
-docker compose -f docker-compose.prod.yml up -d --remove-orphans || {
-    print_error "Failed to start services"
+docker compose -f docker-compose.prod.yml up -d --remove-orphans --wait --wait-timeout 60 || {
+    print_error "Failed to start services (or they did not become healthy in time)"
     docker compose -f docker-compose.prod.yml logs
     exit 1
 }
