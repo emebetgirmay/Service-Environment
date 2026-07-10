@@ -9,6 +9,5 @@
 #   flask    = The web framework that runs our services (handles HTTP requests)
 #   requests = A library for making HTTP calls to other services (A calls B, etc.)
 
-prometheus-client
 flask
 requests

@@ -4,17 +4,15 @@ import json
 import uuid
 import os
 from datetime import datetime
-from shared.observability import register_observability
 
 app = Flask(__name__)
-register_observability(app, "service-c")
 
-SERVICE_A_URL = os.environ.get("SERVICE_A_URL", "http://service-a:3001/callback")
+SERVICE_B_URL = os.environ.get("SERVICE_B_URL", "http://service-b:3002/process")
 
 def log(level, event, trace_id, **kwargs):
     entry = {
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "service-c",
+        "service": "service-a",
         "level": level,
         "event": event,
         "trace_id": trace_id,
@@ -24,26 +22,33 @@ def log(level, event, trace_id, **kwargs):
 
 @app.route("/health")
 def health():
-    return jsonify({"service": "service-c", "status": "ok"})
+    return jsonify({"service": "service-a", "status": "ok"})
 
-@app.route("/execute", methods=["POST"])
-def execute():
+@app.route("/request", methods=["POST"])
+def handle_request():
     trace_id = request.headers.get("X-Request-ID") or request.headers.get("X-Trace-ID") or str(uuid.uuid4())
-    log("INFO", "request_received", trace_id, path="/execute")
+    log("INFO", "request_received", trace_id, path="/request")
     try:
         resp = requests.post(
-            SERVICE_A_URL,
-            json={"result": "done", "processed_by": "service-c"},
+            SERVICE_B_URL,
+            json=request.get_json(),
             headers={
                 "X-Request-ID": trace_id,
                 "X-Trace-ID": trace_id
             }
         )
-        log("INFO", "callback_sent_to_a", trace_id, status=resp.status_code)
-        return jsonify({"status": "executed"})
+        log("INFO", "forwarded_to_b", trace_id, status=resp.status_code)
+        return jsonify({"status": "accepted", "trace_id": trace_id})
     except Exception as e:
-        log("ERROR", "failed_to_callback_a", trace_id, error=str(e))
-        return jsonify({"error": "callback failed"}), 502
+        log("ERROR", "failed_to_reach_b", trace_id, error=str(e))
+        return jsonify({"error": "service-b unavailable"}), 502
+
+@app.route("/callback", methods=["POST"])
+def callback():
+    data = request.get_json()
+    trace_id = request.headers.get("X-Request-ID") or request.headers.get("X-Trace-ID") or "unknown"
+    log("INFO", "callback_received", trace_id, data=data)
+    return jsonify({"status": "callback_acknowledged"})
 
 @app.errorhandler(404)
 def not_found(e):
@@ -52,4 +57,4 @@ def not_found(e):
     return jsonify({"error": "not found"}), 404
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3003)
+    app.run(host="0.0.0.0", port=3001)
