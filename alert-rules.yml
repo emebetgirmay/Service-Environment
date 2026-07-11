@@ -1,18 +1,86 @@
 groups:
   - name: service-observability
     rules:
+
+      # ────────────────────────────────────────────────────────────
+      # ALERT 1: Service Down
+      # ────────────────────────────────────────────────────────────
       - alert: ServiceDown
         expr: up{job=~"service-a|service-b|service-c"} == 0
         for: 1m
-        labels: {severity: critical}
-        annotations: {summary: "{{ $labels.job }} is unavailable"}
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is unavailable"
+          description: >
+            Prometheus has not been able to scrape {{ $labels.job }} for at
+            least 1 minute. The target is either stopped, crashed, or
+            unreachable on the Docker network.
+          possible_causes: >
+            1) Container stopped or crashed (docker compose stop/crash).
+            2) Container is still starting and hasn't bound its port yet.
+            3) Network misconfiguration.
+            4) The service's Flask process hung or deadlocked.
+          how_to_reproduce: >
+            docker compose stop service-b
+            (wait 1m for the alert to fire, then `docker compose start service-b` to clear it)
+          first_checks: |
+            docker compose ps
+            docker compose logs service-b --tail 50
+            curl http://localhost:8080/health
+          confirm_normal_state: >
+            In Prometheus UI (Status > Targets), the target's State column
+            shows "UP" and the alert returns to inactive.
+
+      # ────────────────────────────────────────────────────────────
+      # ALERT 2: High Error Rate
+      # ────────────────────────────────────────────────────────────
       - alert: HighErrorRate
         expr: sum by (service) (rate(http_errors_total[2m])) > 0.1
         for: 2m
-        labels: {severity: warning}
-        annotations: {summary: "{{ $labels.service }} has a high HTTP error rate"}
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} has a high HTTP error rate"
+          description: >
+            {{ $labels.service }} is producing more than 0.1 errors/sec
+            (5xx or otherwise error-labeled responses) sustained over 2 minutes.
+          possible_causes: >
+            1) A downstream dependency is down (e.g. service-a failing to reach service-b).
+            2) An unhandled exception in a route handler.
+            3) The /fail controlled-failure endpoint is being exercised intentionally.
+          how_to_reproduce: >
+            curl -X GET http://localhost:8080/fail
+            (repeat several times, or run: k6 run -e SCENARIO=failure -e FAILURE_TYPE=fail scripts/load-test.js)
+          first_checks: |
+            docker compose logs service-a --tail 100 | grep '"level": "ERROR"'
+          confirm_normal_state: >
+            Error rate drops back under 0.1/sec and stays there for one full
+            2-minute evaluation window after the failure source is removed.
+
+      # ────────────────────────────────────────────────────────────
+      # ALERT 3: High p95 Latency
+      # ────────────────────────────────────────────────────────────
       - alert: HighP95Latency
         expr: histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket[5m]))) > 0.5
         for: 2m
-        labels: {severity: warning}
-        annotations: {summary: "{{ $labels.service }} p95 HTTP latency exceeds 500ms"}
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} p95 HTTP latency exceeds 500ms"
+          description: >
+            95% of requests to {{ $labels.service }} are completing, but the
+            slowest 5% are taking longer than 500ms over a 5-minute window.
+          possible_causes: >
+            1) A downstream service is slow.
+            2) Resource contention on the container/host.
+            3) The /slow controlled-failure endpoint is being exercised intentionally.
+            4) High concurrency causing queuing delay.
+          how_to_reproduce: >
+            curl -X GET http://localhost:8080/slow
+            (or: k6 run -e SCENARIO=failure -e FAILURE_TYPE=slow scripts/load-test.js)
+          first_checks: |
+            docker compose logs service-a --tail 100 | grep duration_ms
+          confirm_normal_state: >
+            p95 latency drops back under 500ms and holds for the full
+            2-minute evaluation window.
