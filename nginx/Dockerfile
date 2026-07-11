@@ -4,4 +4,4 @@ FROM nginx:1.27.0-alpine
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx.conf
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx/nginx.conf /etc/nginx/nginx.conf

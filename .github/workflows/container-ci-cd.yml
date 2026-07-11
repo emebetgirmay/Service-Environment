@@ -23,6 +23,8 @@ jobs:
             path: ./service-b
           - service: service-c
             path: ./service-c
+          - service: nginx
+            path: ./nginx
 
     steps:
       - name: Checkout repository
@@ -43,10 +45,10 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -f "${{ matrix.path }}/test_*.py" ] || [ -f "${{ matrix.path }}/tests.py" ]; then
+          if [ "${{ matrix.service }}" != "nginx" ]; then
             pytest ${{ matrix.path }} -v --tb=short
           else
-            echo "No tests found for ${{ matrix.service }}, skipping test step"
+            echo "Nginx gateway has no python tests, skipping"
           fi
 
       - name: Lint with flake8 (optional)
@@ -109,6 +111,8 @@ jobs:
             path: ./service-b
           - service: service-c
             path: ./service-c
+          - service: nginx
+            path: ./nginx
 
     steps:
       - name: Checkout repository
@@ -131,7 +135,6 @@ jobs:
           push: true
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-${{ matrix.service }}:sha-${{ env.SHORT_SHA }}
-            ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-${{ matrix.service }}:latest
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

@@ -1,10 +1,8 @@
 services:
   nginx:
-    image: nginx:1.27.0-alpine
+    image: ${DOCKERHUB_USERNAME}/${APP_NAME}-nginx:${IMAGE_TAG}
     ports:
       - "8080:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
     depends_on:
       service-a:
@@ -63,6 +61,14 @@ services:
       timeout: 2s
       retries: 5
       start_period: 2s
+    networks:
+      - backend
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "16686:16686"
+    restart: unless-stopped
     networks:
       - backend
 
