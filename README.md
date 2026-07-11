@@ -227,8 +227,8 @@ The CI/CD pipeline ensures:
 
 1. **`verify`** (Runs on PR and push):
    - Sets up Python 3.12
-   - Installs dependencies from `requirements.txt`
-   - Runs tests if available
+   - Installs dependencies from `requirements.txt` and `requirements-dev.txt`
+   - Runs the `pytest` suite for each service — **the build fails if tests fail or if a service has no tests** (the gate cannot be skipped)
    - Builds Docker images for each service
    - **Fails the build** if any step fails, blocking merge
 
@@ -241,9 +241,25 @@ The CI/CD pipeline ensures:
 
 3. **`publish`** (Runs only on main branch after compose verification):
    - Logs into Docker Hub
-   - Builds and pushes service images with `sha-<short-commit-hash>` tags
+   - Builds and pushes the three service images **and the custom nginx gateway image**, each with a `sha-<short-commit-hash>` tag only (no `latest` — floating tags are intentionally not published)
    - Adds OCI image labels (revision, source repository)
    - Publishes deployment summary to job output
+
+### Latest Deployed Version
+
+This section records the currently deployed build so a reviewer can reproduce and
+verify it. **Update it after each successful `publish` run on `main`** (copy the
+values from the Actions run summary).
+
+| Field | Value |
+|-------|-------|
+| Commit hash | `<full-commit-sha>` |
+| Image tag | `sha-<short-commit-hash>` |
+| Published images | `<DOCKERHUB_USERNAME>/service-environment-{service-a,service-b,service-c,nginx}:sha-<short-commit-hash>` |
+| Actions run | `<link to the GitHub Actions run>` |
+
+> Placeholders above are filled in once the pipeline has run against `main` with the
+> Docker Hub secrets configured. Until then, no versioned images have been published.
 
 ### Setup: GitHub Repository Secrets and Variables
 
@@ -323,6 +339,7 @@ Images are tagged with the **short commit hash** for reproducibility:
 DOCKERHUB_USERNAME/service-environment-service-a:sha-a1b2c3d
 DOCKERHUB_USERNAME/service-environment-service-b:sha-a1b2c3d
 DOCKERHUB_USERNAME/service-environment-service-c:sha-a1b2c3d
+DOCKERHUB_USERNAME/service-environment-nginx:sha-a1b2c3d
 ```
 
 This ensures:
@@ -372,21 +389,28 @@ docker compose build --pull
 netstat -an | grep 8080
 ```
 
-**Tests blocking CI**:
-- If tests are not ready, they can be skipped temporarily (not recommended for production)
-- Add test files as `test_*.py` or `tests.py` in service directories for CI to automatically detect and run them
+**Tests failing CI**:
+- The test gate is mandatory and cannot be skipped — a service with no tests fails the build by design.
+- Each service has a `test_service_*.py` suite in its directory; run it locally before pushing:
+  ```bash
+  pip install -r requirements.txt -r requirements-dev.txt
+  pytest service-a service-b service-c -v
+  ```
+- Add new tests to the relevant `service-*/test_service_*.py` file as you add endpoints.
 
 ### Deployment Checklist
 
 Before production deployment:
 
+- [ ] `.env` created from `.env.example` with real values (`DOCKERHUB_USERNAME`, `APP_NAME`, `IMAGE_TAG`)
 - [ ] Commit and push code to `main`
-- [ ] GitHub Actions workflow completes successfully
-- [ ] Images appear in Docker Hub with `sha-<hash>` tag
+- [ ] GitHub Actions workflow completes successfully (including the `pytest` gate)
+- [ ] Images appear in Docker Hub with `sha-<hash>` tag (service-a/b/c **and** nginx)
 - [ ] Pull and inspect images locally: `docker pull DOCKERHUB_USERNAME/service-environment-service-a:sha-<hash>`
 - [ ] Run deployment script: `./scripts/deploy.sh sha-<hash>`
 - [ ] Verify services health: `curl http://localhost:8080/service-a/health`
 - [ ] Check logs for errors: `docker compose -f docker-compose.prod.yml logs`
+- [ ] Update the **Latest Deployed Version** section above with the commit hash, image tag, image names, and Actions run link
 
 ---
 

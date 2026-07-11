@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -)",
+      "Bash(mkdir -p /tmp/claude-1000/-home-dkvdp-Documents-Service-Environment-feature-ci-cd-pipeline/d318f5f8-94fb-41b0-8e4e-fe2377015033/scratchpad/notests)",
+      "Bash(/tmp/claude-1000/-home-dkvdp-Documents-Service-Environment-feature-ci-cd-pipeline/d318f5f8-94fb-41b0-8e4e-fe2377015033/scratchpad/venv/bin/python -m pytest /tmp/claude-1000/-home-dkvdp-Documents-Service-Environment-feature-ci-cd-pipeline/d318f5f8-94fb-41b0-8e4e-fe2377015033/scratchpad/notests -v)",
+      "Bash(echo \"pytest exit code on a dir with NO tests: $?  \\(non-zero => CI step fails => gate is fail-loud\\)\")",
+      "Bash(/tmp/claude-1000/-home-dkvdp-Documents-Service-Environment-feature-ci-cd-pipeline/d318f5f8-94fb-41b0-8e4e-fe2377015033/scratchpad/venv/bin/python -m pytest /tmp/claude-1000/-home-dkvdp-Documents-Service-Environment-feature-ci-cd-pipeline/d318f5f8-94fb-41b0-8e4e-fe2377015033/scratchpad/notests)",
+      "Bash(echo \"pytest exit code on empty dir: $?\")",
+      "Bash(/tmp/claude-1000/-home-dkvdp-Documents-Service-Environment-feature-ci-cd-pipeline/d318f5f8-94fb-41b0-8e4e-fe2377015033/scratchpad/venv/bin/python -m pytest service-a)",
+      "Bash(echo \"pytest exit code on service-a \\(has tests\\): $?\")"
+    ]
+  }
+}

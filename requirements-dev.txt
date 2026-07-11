@@ -1,2 +1,6 @@
+# Development / CI-only dependencies (not installed into the runtime images).
+#   pytest     = test runner used by the CI "Run tests" gate
+#   pytest-cov = coverage reporting for the test suite
+
 pytest>=8.0.0
 pytest-cov>=4.1.0
