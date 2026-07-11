@@ -18,6 +18,8 @@ RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --ingroup appgroup appuser && \
     chown -R appuser:appgroup /app
 
+ENV PYTHONPATH=/app
+
 USER appuser
 
 EXPOSE 3002
