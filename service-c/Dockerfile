@@ -23,5 +23,7 @@ USER appuser
 EXPOSE 3003
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 CMD ["python", "service-c/app.py"]
+

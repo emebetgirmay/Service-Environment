@@ -23,6 +23,8 @@ jobs:
             path: ./service-b
           - service: service-c
             path: ./service-c
+          - service: nginx
+            path: ./nginx
 
     steps:
       - name: Checkout repository
@@ -41,7 +43,12 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
-        run: pytest ${{ matrix.path }} -v --tb=short
+        run: |
+          if [ "${{ matrix.service }}" != "nginx" ]; then
+            pytest ${{ matrix.path }} -v --tb=short
+          else
+            echo "Nginx gateway has no python tests, skipping"
+          fi
 
       - name: Lint with flake8 (optional)
         run: |
@@ -102,11 +109,17 @@ jobs:
             context: .
             dockerfile: service-b/Dockerfile
           - service: service-c
+<<<<<<< HEAD
             context: .
             dockerfile: service-c/Dockerfile
           - service: nginx
             context: ./nginx
             dockerfile: ./nginx/Dockerfile
+=======
+            path: ./service-c
+          - service: nginx
+            path: ./nginx
+>>>>>>> fdf15fe2612c68c5fef0cf4928ab721b9cac7ed0
 
     steps:
       - name: Checkout repository

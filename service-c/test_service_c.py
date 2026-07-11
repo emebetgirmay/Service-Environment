@@ -1,53 +1,50 @@
-"""Tests for service-c.
-
-Loads the service's app.py by file path so the suite runs both in isolation
-(``pytest service-c``) and as part of a whole-repo run without module-name
-collisions between the three services' identically named ``app`` modules.
-"""
-import importlib.util
-import os
-from unittest.mock import patch
-
 import pytest
+from unittest.mock import patch, MagicMock
+import sys
+import os
 
-_APP_PATH = os.path.join(os.path.dirname(__file__), "app.py")
-_spec = importlib.util.spec_from_file_location("service_c_app", _APP_PATH)
-service_c = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(service_c)
-
+# Clean up module cache to prevent conflict across directories
+sys.modules.pop("app", None)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from app import app
 
 @pytest.fixture
 def client():
-    service_c.app.config["TESTING"] = True
-    with service_c.app.test_client() as c:
-        yield c
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        yield client
 
+def test_health(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["service"] == "service-c"
+    assert data["status"] == "ok"
 
-def test_health_returns_ok(client):
-    resp = client.get("/health")
-    assert resp.status_code == 200
-    assert resp.get_json() == {"service": "service-c", "status": "ok"}
+@patch("app.requests.post")
+def test_execute_success(mock_post, client):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_post.return_value = mock_response
 
+    response = client.post("/execute", json={"key": "value"})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "executed"
 
-def test_execute_calls_back_to_service_a(client):
-    with patch.object(service_c.requests, "post") as mock_post:
-        mock_post.return_value.status_code = 200
-        resp = client.post("/execute", json={"hello": "world"})
+@patch("app.requests.post")
+def test_execute_failure(mock_post, client):
+    mock_post.side_effect = Exception("Connection refused")
 
-    assert resp.status_code == 200
-    assert resp.get_json() == {"status": "executed"}
-    mock_post.assert_called_once()
+    response = client.post("/execute", json={"key": "value"})
+    assert response.status_code == 502
+    data = response.get_json()
+    assert data["error"] == "callback failed"
 
+def test_404(client):
+    response = client.get("/non-existent-route")
+    assert response.status_code == 404
+    data = response.get_json()
+    assert data["error"] == "not found"
 
-def test_execute_returns_502_when_callback_fails(client):
-    with patch.object(service_c.requests, "post", side_effect=Exception("boom")):
-        resp = client.post("/execute", json={})
-
-    assert resp.status_code == 502
-    assert resp.get_json() == {"error": "callback failed"}
-
-
-def test_unknown_route_returns_404(client):
-    resp = client.get("/does-not-exist")
-    assert resp.status_code == 404
-    assert resp.get_json() == {"error": "not found"}
