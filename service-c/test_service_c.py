@@ -47,3 +47,4 @@ def test_404(client):
     assert response.status_code == 404
     data = response.get_json()
     assert data["error"] == "not found"
+

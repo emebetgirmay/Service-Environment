@@ -9,12 +9,5 @@
 #   flask    = The web framework that runs our services (handles HTTP requests)
 #   requests = A library for making HTTP calls to other services (A calls B, etc.)
 
-prometheus-client
 flask
 requests
-opentelemetry-api>=1.24.0
-opentelemetry-sdk>=1.24.0
-opentelemetry-instrumentation-flask>=0.45b0
-opentelemetry-instrumentation-requests>=0.45b0
-opentelemetry-exporter-otlp-proto-grpc>=1.24.0
-python-json-logger>=2.0.7

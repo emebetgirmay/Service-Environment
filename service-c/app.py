@@ -7,14 +7,20 @@ import time
 from datetime import datetime, timezone
 from shared.logger import create_logger
 from shared.tracing import init_tracer, instrument_app
+from shared.observability import register_observability
 
 # Initialize OpenTelemetry Tracing
 init_tracer("service-c")
 
 app = Flask(__name__)
+
 # Instrument Flask app for incoming traces
 instrument_app(app)
 
+# Register Prometheus metrics /metrics endpoint and metrics capture
+register_observability(app, "service-c")
+
+# Initialize custom structured logger
 log = create_logger("service-c")
 
 SERVICE_A_URL = os.environ.get("SERVICE_A_URL", "http://service-a:3001/callback")

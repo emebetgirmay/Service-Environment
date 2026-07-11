@@ -40,8 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
         run: |
@@ -79,15 +78,13 @@ jobs:
         run: docker compose build --pull
 
       - name: Start Compose stack
-        run: docker compose up -d
+        run: docker compose up -d --wait --wait-timeout 60
 
       - name: Show running services
         run: docker compose ps
 
       - name: Check gateway health
-        run: |
-          sleep 15
-          curl --fail http://localhost:8080/health || (docker compose logs && exit 1)
+        run: curl --fail http://localhost:8080/health || (docker compose logs && exit 1)
 
       - name: Check service logs
         if: failure()
@@ -106,13 +103,23 @@ jobs:
       matrix:
         include:
           - service: service-a
-            path: ./service-a
+            context: .
+            dockerfile: service-a/Dockerfile
           - service: service-b
-            path: ./service-b
+            context: .
+            dockerfile: service-b/Dockerfile
           - service: service-c
+<<<<<<< HEAD
+            context: .
+            dockerfile: service-c/Dockerfile
+          - service: nginx
+            context: ./nginx
+            dockerfile: ./nginx/Dockerfile
+=======
             path: ./service-c
           - service: nginx
             path: ./nginx
+>>>>>>> fdf15fe2612c68c5fef0cf4928ab721b9cac7ed0
 
     steps:
       - name: Checkout repository
@@ -130,8 +137,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ matrix.path }}/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-${{ matrix.service }}:sha-${{ env.SHORT_SHA }}

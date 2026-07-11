@@ -1,6 +1,8 @@
 services:
   nginx:
-    image: ${DOCKERHUB_USERNAME}/${APP_NAME}-nginx:${IMAGE_TAG}
+    # Same commit-pinned gateway image the CI builds and verifies — no stock
+    # image + mounted config, so production runs exactly what CI tested.
+    image: ${DOCKERHUB_USERNAME:?set DOCKERHUB_USERNAME}/${APP_NAME:?set APP_NAME}-nginx:${IMAGE_TAG:?set IMAGE_TAG}
     ports:
       - "8080:80"
     restart: unless-stopped
@@ -11,7 +13,7 @@ services:
       - frontend
 
   service-a:
-    image: ${DOCKERHUB_USERNAME}/${APP_NAME}-service-a:${IMAGE_TAG}
+    image: ${DOCKERHUB_USERNAME:?set DOCKERHUB_USERNAME}/${APP_NAME:?set APP_NAME}-service-a:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped
     depends_on:
       service-b:
@@ -32,7 +34,7 @@ services:
       - backend
 
   service-b:
-    image: ${DOCKERHUB_USERNAME}/${APP_NAME}-service-b:${IMAGE_TAG}
+    image: ${DOCKERHUB_USERNAME:?set DOCKERHUB_USERNAME}/${APP_NAME:?set APP_NAME}-service-b:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped
     depends_on:
       service-c:
@@ -50,7 +52,7 @@ services:
       - backend
 
   service-c:
-    image: ${DOCKERHUB_USERNAME}/${APP_NAME}-service-c:${IMAGE_TAG}
+    image: ${DOCKERHUB_USERNAME:?set DOCKERHUB_USERNAME}/${APP_NAME:?set APP_NAME}-service-c:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
