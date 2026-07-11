@@ -1,8 +1,8 @@
 services:
   nginx:
     build:
-      context: ./nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nginx/Dockerfile
     ports:
       - "8080:80"
     restart: unless-stopped
@@ -72,7 +72,7 @@ services:
       - production-net
 
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v2.52.0
     ports:
       - "9090:9090"
     volumes:
@@ -87,19 +87,31 @@ services:
       - production-net
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:11.0.0
     ports:
       - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+    restart: unless-stopped
+    networks:
+      - production-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
     restart: unless-stopped
     networks:
       - production-net

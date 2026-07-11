@@ -66,6 +66,14 @@ services:
     networks:
       - backend
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "16686:16686"
+    restart: unless-stopped
+    networks:
+      - backend
+
 networks:
   frontend:
     driver: bridge

@@ -1,11 +1,6 @@
 # Development / CI-only dependencies (not installed into the runtime images).
-#
-# HOW TO INSTALL:
-#   pip install -r requirements.txt -r requirements-dev.txt
-#
-# WHAT THESE PACKAGES DO:
 #   pytest     = test runner used by the CI "Run tests" gate
 #   pytest-cov = coverage reporting for the test suite
 
-pytest
-pytest-cov
+pytest>=8.0.0
+pytest-cov>=4.1.0

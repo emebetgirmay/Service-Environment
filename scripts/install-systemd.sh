@@ -53,20 +53,35 @@ done
 systemctl daemon-reload
 systemctl enable service-a.service service-b.service service-c.service
 
-echo "==> [5/5] Starting services in dependency order..."
-systemctl start service-c.service
-systemctl start service-b.service
-sleep 1
-systemctl start service-a.service
+poll_health() {
+    local port="$1"
+    local name="$2"
+    local max_attempts=15
+    local attempt=1
+    echo "    Polling health for $name on port $port..."
+    while [[ $attempt -le $max_attempts ]]; do
+        if curl -sf "http://127.0.0.1:$port/health" >/dev/null; then
+            echo "    OK   $name is healthy on port $port (attempt $attempt)"
+            return 0
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    echo "    FAIL $name did not respond on port $port after $max_attempts seconds"
+    return 1
+}
 
-echo "==> Verifying..."
-sleep 2
-for port_name in "3001:service-a" "3002:service-b" "3003:service-c"; do
-    port="${port_name%%:*}"
-    name="${port_name##*:}"
-    if curl -sf "http://127.0.0.1:$port/health" >/dev/null; then
-        echo "    OK   $name healthy on port $port"
-    else
-        echo "    FAIL $name did not respond on port $port"
-    fi
-done
+echo "==> [5/5] Starting services in dependency order..."
+echo "Starting service-c..."
+systemctl start service-c.service
+poll_health 3003 service-c || exit 1
+
+echo "Starting service-b..."
+systemctl start service-b.service
+poll_health 3002 service-b || exit 1
+
+echo "Starting service-a..."
+systemctl start service-a.service
+poll_health 3001 service-a || exit 1
+
+echo "==> Verification complete!"
