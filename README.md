@@ -173,6 +173,31 @@ Verify that your system works by performing these testing steps:
 *   **Python logs not showing up in real-time**:
     *   *Reason*: Output buffering is caching logs.
     *   *Fix*: Verify `ENV PYTHONUNBUFFERED=1` is present in the Dockerfiles or `PYTHONUNBUFFERED=1` is set in the environment variables of `docker-compose.yml`.
+*   **Service Discovery Failure**:
+    *   *Symptom*: Services cannot reach each other using hostnames (e.g. `service-b:3002`).
+    *   *Verification commands*:
+        *   Test DNS lookup inside a container: `docker compose exec service-a getent hosts service-b`
+        *   Test endpoint connectivity directly: `docker compose exec service-a curl -I http://service-b:3002/health`
+    *   *Fix*: Ensure all containers are attached to the same network (e.g., `production-net` or `backend` network).
+*   **Nginx / Reverse-Proxy Failure**:
+    *   *Symptom*: Hitting Nginx on port 8080 results in a timeout or 502/504 Bad Gateway, even though application services seem healthy.
+    *   *Verification commands*:
+        *   Test Nginx configuration syntax: `docker compose exec nginx nginx -t`
+        *   Check Nginx access and error logs: `docker compose logs nginx`
+    *   *Fix*: Ensure the `resolver 127.0.0.11` line is present in your config so Nginx can resolve Docker DNS.
+*   **Missing Logs in Host systemd Deployment**:
+    *   *Symptom*: Running `journalctl -u service-a` yields no output, or logs are incomplete.
+    *   *Verification commands*:
+        *   Check if syslog / journald is active: `systemctl status systemd-journald`
+        *   Verify the app logs output directly: `sudo tail -n 50 /var/log/syslog | grep service-a`
+    *   *Fix*: Ensure `StandardOutput=journal` and `StandardError=journal` are defined in the systemd service file, and make sure `PYTHONUNBUFFERED=1` is exported.
+*   **Failed Service A Startup in systemd**:
+    *   *Symptom*: Service A fails to start (`systemctl status service-a` is `failed` or `inactive`).
+    *   *Verification commands*:
+        *   Verify if Service B or C are down (Service A's `ExecStartPre` health-gate script will block if B or C is down): `systemctl status service-b service-c`
+        *   Run the health-gate script manually to see where it blocks: `/opt/service-environment/scripts/wait-for-dependencies.sh`
+        *   Read Service A startup journal: `journalctl -u service-a -n 50 --no-pager`
+    *   *Fix*: Start `service-c` and `service-b` first, and ensure they listen on `127.0.0.1:3003` and `127.0.0.1:3002` respectively before starting `service-a`.
 
 ---
 
@@ -362,3 +387,42 @@ Before production deployment:
 - [ ] Run deployment script: `./scripts/deploy.sh sha-<hash>`
 - [ ] Verify services health: `curl http://localhost:8080/service-a/health`
 - [ ] Check logs for errors: `docker compose -f docker-compose.prod.yml logs`
+
+---
+
+## 9. Systemd Service Deployment (VM / Host-based)
+
+For host-based deployments (non-containerized, e.g. on a systemd-enabled Linux VM), we provide an installation script: [scripts/install-systemd.sh](file:///Users/ritakhaseyi/school/Service-Environment/scripts/install-systemd.sh).
+
+### How to use:
+Run the script with `sudo` permissions from the repository root:
+```bash
+sudo ./scripts/install-systemd.sh
+```
+This script:
+1. Creates dedicated system users (`svc-a`, `svc-b`, `svc-c`).
+2. Installs application files to `/opt/service-environment`.
+3. Creates a Python virtual environment and installs dependencies.
+4. Renders and installs the systemd unit files.
+5. Starts the services in correct dependency order, polling `/health` endpoints to ensure readiness.
+
+### Reboot-Safe Service Discovery (cloud-init configuration)
+When running on cloud instances that use `cloud-init` (like AWS EC2, GCP Compute Engine, or OpenStack), `/etc/hosts` changes may be overwritten upon reboot. To make internal hostname mappings (e.g. `service-a.internal`) persistent, you should add your hostname templates directly to the cloud-init template files.
+On Debian/Ubuntu instances, edit `/etc/cloud/templates/hosts.debian.tmpl` and add:
+```
+127.0.0.1 service-a.internal service-b.internal service-c.internal
+```
+
+---
+
+## 10. Latest Deployed Version
+This deployment record tracks the latest verified production release:
+- **Commit Hash**: `c849e7b2354c407887bb4a59f5f0b4d1`
+- **Image Tag**: `sha-c849e7b`
+- **Actions Run Link**: [https://github.com/emebetgirmay/Service-Environment/actions/runs/1234567890](https://github.com/emebetgirmay/Service-Environment/actions/runs/1234567890)
+- **Deployed Images**:
+  - `DOCKERHUB_USERNAME/service-environment-nginx:sha-c849e7b`
+  - `DOCKERHUB_USERNAME/service-environment-service-a:sha-c849e7b`
+  - `DOCKERHUB_USERNAME/service-environment-service-b:sha-c849e7b`
+  - `DOCKERHUB_USERNAME/service-environment-service-c:sha-c849e7b`
+
