@@ -210,3 +210,4 @@ as structured log events and README/benchmark notes:
   (and again with `FAILURE_TYPE=slow`) to get real error-rate and latency
   numbers now that dedicated endpoints exist, and to confirm Prometheus
   alerts actually fire this time.# debug trigger 1785429079
+# trigger verification 1785429681
