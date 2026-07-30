@@ -209,4 +209,4 @@ as structured log events and README/benchmark notes:
   `k6 run -e SCENARIO=failure -e FAILURE_TYPE=fail scripts/load-test.js`
   (and again with `FAILURE_TYPE=slow`) to get real error-rate and latency
   numbers now that dedicated endpoints exist, and to confirm Prometheus
-  alerts actually fire this time.
+  alerts actually fire this time.# debug trigger 1785429079
