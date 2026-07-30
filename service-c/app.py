@@ -44,7 +44,7 @@ def log_response(response):
 
 @app.route("/health")
 def health():
-    return jsonify({"service": "service-c", "status": "ok"})
+    return jsonify({"service": "service-c", "status": "ok", "version": os.environ.get("APP_VERSION", "unknown")})
 
 @app.route("/execute", methods=["POST"])
 def execute():
