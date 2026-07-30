@@ -46,7 +46,7 @@ def log_response(response):
 
 @app.route("/health")
 def health():
-    return jsonify({"service": "service-a", "status": "ok"})
+    return jsonify({"service": "service-a", "status": "ok", "version": os.environ.get("APP_VERSION", "unknown")})
 
 from opentelemetry import trace
 
