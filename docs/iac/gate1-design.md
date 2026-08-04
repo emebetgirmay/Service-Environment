@@ -4,9 +4,8 @@
 **Group:** 9
 **Region:** eu-north-1 (assigned — no other Region may be used)
 **Status:** DRAFT — pending peer/instructor review. No workload resources exist yet.
-**Owners at time of writing:** solo draft (Service A/B/C, Platform, and Release ownership
-not yet assigned by the group — see [Ownership map](#ownership-map) for placeholders to
-fill in once roles are rotated).
+**Owners at time of writing:** Platform — Mitingi Joy; Release — Emebet Girmay; Service
+A/B/C ownership not yet assigned by the group (see [Ownership map](#ownership-map)).
 
 This document is the Gate 1 submission required before the first workload `apply`. It
 covers: dependency graph and ownership map, CIDR/subnet-capacity table, route-table and
@@ -64,14 +63,15 @@ target group; B and C are reachable only via Service Connect inside the mesh.
 
 | Area | AWS / IaC resources owned | Owner (role) | Owner (person) |
 |---|---|---|---|
-| Platform | VPC, subnets, route tables, IGW, VPC endpoints, ECS cluster, Service Connect namespace, ALB + listener, shared IAM (task execution role), backend wiring in `infra/environments/lab` | Platform owner | *unassigned — solo draft* |
-| Service A | ECR repo, module inputs, task definition, log group, `sg-svc-a`, ECS service, ALB target-group registration, release evidence | Service A owner | *unassigned — solo draft* |
-| Service B | ECR repo, module inputs, task definition, log group, `sg-svc-b`, ECS service, release evidence | Service B owner | *unassigned — solo draft* |
-| Service C | ECR repo, module inputs, task definition, log group, `sg-svc-c`, ECS service, release evidence | Service C owner | *unassigned — solo draft* |
-| Release | Plan summaries, approval evidence, image-SHA selection, runtime release proof, rollback evidence | Release owner | *unassigned — solo draft* |
+| Platform | VPC, subnets, route tables, IGW, VPC endpoints, ECS cluster, Service Connect namespace, ALB + listener, shared IAM (task execution role), backend wiring in `infra/environments/lab` | Platform owner | Mitingi Joy |
+| Service A | ECR repo, module inputs, task definition, log group, `sg-svc-a`, ECS service, ALB target-group registration, release evidence | Service A owner | *unassigned* |
+| Service B | ECR repo, module inputs, task definition, log group, `sg-svc-b`, ECS service, release evidence | Service B owner | *unassigned* |
+| Service C | ECR repo, module inputs, task definition, log group, `sg-svc-c`, ECS service, release evidence | Service C owner | *unassigned* |
+| Release | Plan summaries, approval evidence, image-SHA selection, runtime release proof, rollback evidence | Release owner | Emebet Girmay |
 
-Action item once the group assigns names: replace the `*unassigned*` cells and rotate
-Platform/Release between cycles per the assignment rules for 3-person teams.
+Action item once the group assigns the remaining names: replace the `*unassigned*`
+Service A/B/C cells, and rotate Platform/Release between cycles per the assignment rules
+for 3-person teams.
 
 ---
 
@@ -82,10 +82,10 @@ peering is ever compared side by side: **`10.9.0.0/16`**.
 
 | Subnet | AZ | CIDR | Usable IPs (AWS reserves 5) | Purpose |
 |---|---|---|---|---|
-| `devops-g9-public-a` | eu-north-1a | `10.9.0.0/24` | 251 | ALB ENIs |
-| `devops-g9-public-b` | eu-north-1b | `10.9.1.0/24` | 251 | ALB ENIs |
-| `devops-g9-private-app-a` | eu-north-1a | `10.9.10.0/24` | 251 | Fargate tasks (A/B/C) |
-| `devops-g9-private-app-b` | eu-north-1b | `10.9.11.0/24` | 251 | Fargate tasks (A/B/C) |
+| `devops-g9-iac-public-a` | eu-north-1a | `10.9.0.0/24` | 251 | ALB ENIs |
+| `devops-g9-iac-public-b` | eu-north-1b | `10.9.1.0/24` | 251 | ALB ENIs |
+| `devops-g9-iac-private-app-a` | eu-north-1a | `10.9.10.0/24` | 251 | Fargate tasks (A/B/C) |
+| `devops-g9-iac-private-app-b` | eu-north-1b | `10.9.11.0/24` | 251 | Fargate tasks (A/B/C) |
 
 Reserved, unallocated ranges for future growth without re-addressing: `10.9.2.0/24`–
 `10.9.9.0/24` (public / a possible third AZ), `10.9.12.0/24`–`10.9.19.0/24` (private).
@@ -113,8 +113,8 @@ Each Fargate task consumes exactly one ENI/IP in its subnet (`awsvpc` mode).
 
 | Route table | Associated with | Routes |
 |---|---|---|
-| `devops-g9-rt-public` | both public subnets | `10.9.0.0/16` → local; `0.0.0.0/0` → Internet Gateway |
-| `devops-g9-rt-private` | both private-app subnets | `10.9.0.0/16` → local; S3 prefix-list → S3 gateway endpoint (auto-added on association). **No `0.0.0.0/0` route — no NAT Gateway.** |
+| `devops-g9-iac-rt-public` | both public subnets | `10.9.0.0/16` → local; `0.0.0.0/0` → Internet Gateway |
+| `devops-g9-iac-rt-private` | both private-app subnets | `10.9.0.0/16` → local; S3 prefix-list → S3 gateway endpoint (auto-added on association). **No `0.0.0.0/0` route — no NAT Gateway.** |
 
 ### Egress decision: VPC endpoints instead of a NAT Gateway
 
@@ -172,10 +172,25 @@ group can consciously accept or relax it, not inherit it silently.
 
 ## 5. Expected resource names and tags
 
-**Naming convention:** every resource begins with `devops-g9-`, with one explicit
-exception the assignment itself mandates: the Service Connect namespace must be the
-literal string `group9.internal`, not `devops-g9-`-prefixed, because the spec requires
-that exact DNS-namespace format.
+**Naming convention — updated after reviewing the manual build's report:** the group's
+manual/console ECS build (`devops-g9-report.pdf`) already created live resources named
+`devops-g9-cluster`, `devops-g9-alb`, `devops-g9-service-{a,b,c}` (ECR),
+`devops-g9-ecs-task-execution-role`, and more, in this same AWS account
+(`827478161993`) and Region. Robert's instructions require **both** the old manual
+setup and the new IaC setup to exist side by side through Wednesday's demo, so the new
+build's resources cannot reuse those exact names — ECS cluster names, ALB names, IAM
+role names, and ECR repository names must all be unique per account/Region.
+
+Every IaC-managed resource therefore begins with **`devops-g9-iac-`** (inserting `iac`
+right after the group prefix) rather than the bare `devops-g9-` used in the original
+draft of this document. **One exception the assignment itself mandates:** the Service
+Connect namespace must be the literal string `group9.internal`, not
+`devops-g9-iac-`-prefixed — see the open item below on the resulting Cloud Map name
+collision with the manual build's existing `group9.internal` namespace, which still
+needs to be verified/resolved before Gate 1 sign-off.
+
+Shorthand security-group labels used elsewhere in this document (`sg-alb`, `sg-svc-a`,
+`sg-svc-b`, `sg-svc-c`, `sg-vpce`) refer to their full `devops-g9-iac-sg-*` names below.
 
 **Tags applied to every resource** (except where an AWS resource type doesn't support
 tagging):
@@ -186,33 +201,34 @@ tagging):
 | `group` | `g9` |
 | `owner` | one of `platform` / `service-a` / `service-b` / `service-c` / `release` — matches the [ownership map](#ownership-map) |
 | `environment` | `lab` |
+| `build` | `iac` — disambiguates from the manual build's resources, which carry (or should be retroactively tagged) `build=manual` |
 
 **Expected resource names:**
 
 | Resource | Name |
 |---|---|
-| VPC | `devops-g9-vpc` |
-| Internet Gateway | `devops-g9-igw` |
-| Public subnets | `devops-g9-public-a`, `devops-g9-public-b` |
-| Private app subnets | `devops-g9-private-app-a`, `devops-g9-private-app-b` |
-| Public route table | `devops-g9-rt-public` |
-| Private route table | `devops-g9-rt-private` |
-| VPC endpoints | `devops-g9-vpce-ecr-api`, `devops-g9-vpce-ecr-dkr`, `devops-g9-vpce-s3`, `devops-g9-vpce-logs`, `devops-g9-vpce-ssmmessages`, `devops-g9-vpce-ec2messages`, `devops-g9-vpce-ssm` |
-| VPC-endpoint security group | `devops-g9-sg-vpce` |
-| ALB | `devops-g9-alb` |
-| ALB security group | `devops-g9-sg-alb` |
-| ALB target group | `devops-g9-tg-service-a` |
-| ECS cluster | `devops-g9-cluster` |
-| Service Connect namespace | `group9.internal` *(exception — see above)* |
-| Service security groups | `devops-g9-sg-svc-a`, `devops-g9-sg-svc-b`, `devops-g9-sg-svc-c` |
-| ECS services | `devops-g9-svc-a`, `devops-g9-svc-b`, `devops-g9-svc-c` |
-| Task-definition families | `devops-g9-td-service-a`, `devops-g9-td-service-b`, `devops-g9-td-service-c` |
-| CloudWatch log groups | `/ecs/devops-g9/service-a`, `/ecs/devops-g9/service-b`, `/ecs/devops-g9/service-c` |
-| ECR repositories | `devops-g9-service-a`, `devops-g9-service-b`, `devops-g9-service-c` |
-| Shared ECS task-execution role | `devops-g9-ecs-task-execution-role` |
-| Per-service task roles | `devops-g9-ecs-task-role-service-a`, `-service-b`, `-service-c` |
-| State bucket (bootstrap) | `devops-g9-tfstate-<account-id>` |
-| State lock table (bootstrap, if not using S3-native locking) | `devops-g9-tflock` |
+| VPC | `devops-g9-iac-vpc` |
+| Internet Gateway | `devops-g9-iac-igw` |
+| Public subnets | `devops-g9-iac-public-a`, `devops-g9-iac-public-b` |
+| Private app subnets | `devops-g9-iac-private-app-a`, `devops-g9-iac-private-app-b` |
+| Public route table | `devops-g9-iac-rt-public` |
+| Private route table | `devops-g9-iac-rt-private` |
+| VPC endpoints | `devops-g9-iac-vpce-ecr-api`, `devops-g9-iac-vpce-ecr-dkr`, `devops-g9-iac-vpce-s3`, `devops-g9-iac-vpce-logs`, `devops-g9-iac-vpce-ssmmessages`, `devops-g9-iac-vpce-ec2messages`, `devops-g9-iac-vpce-ssm` |
+| VPC-endpoint security group | `devops-g9-iac-sg-vpce` |
+| ALB | `devops-g9-iac-alb` |
+| ALB security group | `devops-g9-iac-sg-alb` |
+| ALB target group | `devops-g9-iac-tg-service-a` |
+| ECS cluster | `devops-g9-iac-cluster` |
+| Service Connect namespace | `group9.internal` *(exception — see above; collision risk flagged as an open item)* |
+| Service security groups | `devops-g9-iac-sg-svc-a`, `devops-g9-iac-sg-svc-b`, `devops-g9-iac-sg-svc-c` |
+| ECS services | `devops-g9-iac-svc-a`, `devops-g9-iac-svc-b`, `devops-g9-iac-svc-c` |
+| Task-definition families | `devops-g9-iac-td-service-a`, `devops-g9-iac-td-service-b`, `devops-g9-iac-td-service-c` |
+| CloudWatch log groups | `/ecs/devops-g9-iac/service-a`, `/ecs/devops-g9-iac/service-b`, `/ecs/devops-g9-iac/service-c` |
+| ECR repositories | `devops-g9-iac-service-a`, `devops-g9-iac-service-b`, `devops-g9-iac-service-c` |
+| Shared ECS task-execution role | `devops-g9-iac-ecs-task-execution-role` |
+| Per-service task roles | `devops-g9-iac-ecs-task-role-service-a`, `-service-b`, `-service-c` |
+| State bucket (bootstrap) | `devops-g9-iac-tfstate-<account-id>` |
+| State lock table (bootstrap, if not using S3-native locking) | `devops-g9-iac-tflock` |
 
 ---
 
@@ -239,6 +255,14 @@ Internet→{A,B,C} and A→C — it says nothing about C→A. Without an explici
   matches the contract exactly as written. Recommend flagging this to Robert directly —
   it's a real mismatch between the existing app and the assignment's traffic contract,
   not a mistake in this document.
+- **This is not theoretical — it already happened.** The group's manual/console ECS
+  build (`devops-g9-report.pdf`, "Scar 1") hit this exact failure live: `POST /request`
+  through the ALB hung ~10s and failed because `service-a-sg` only permitted `alb-sg` on
+  :3001, so C's callback was silently dropped and the Service Connect proxy's own
+  connect-timeout produced the delay before the reset. Their report treated it as
+  by-design/not-repaired rather than resolving it, which means this decision is still
+  open going into the IaC rebuild — worth resolving here rather than carrying the same
+  unresolved gap into a second build.
 
 ### Edge 2 — ECS Exec fails silently under the no-NAT egress design
 
@@ -275,22 +299,22 @@ the connection will be refused.
 
 - **Bootstrap stack** (`infra/bootstrap/`, applied once, separately from the workload)
   creates:
-  - S3 bucket `devops-g9-tfstate-<account-id>` (name includes account ID for global
+  - S3 bucket `devops-g9-iac-tfstate-<account-id>` (name includes account ID for global
     uniqueness) — versioning **on**, default encryption **on**, all four Public Access
     Block settings **on**, bucket policy denies non-TLS (`aws:SecureTransport: false`)
     requests.
   - Locking: prefer S3-native locking (`use_lockfile = true`, requires Terraform ≥1.10 /
     an equivalent OpenTofu release) so no second stateful resource is needed. If the
     group's pinned CLI version doesn't support it, fall back to a DynamoDB table
-    `devops-g9-tflock` (`PAY_PER_REQUEST`, partition key `LockID`).
+    `devops-g9-iac-tflock` (`PAY_PER_REQUEST`, partition key `LockID`).
 - **Bootstrap's own state** is kept local to the operator who runs it, on purpose — never
   stored inside the bucket it creates (avoids a chicken-and-egg problem and keeps the
   bootstrap's state out of the workload's blast radius). It's a rarely-run, single-owner
   operation; the bucket/lock-table names and IDs get recorded in this repo's
   `infra/bootstrap/README.md` output, not the state file itself.
 - **Workload backend** (`infra/environments/lab/`) points at: `bucket =
-  devops-g9-tfstate-<account-id>`, `key = lab/workload.tfstate`, `region = eu-north-1`,
-  `use_lockfile = true` (or `dynamodb_table = devops-g9-tflock`).
+  devops-g9-iac-tfstate-<account-id>`, `key = lab/workload.tfstate`, `region =
+  eu-north-1`, `use_lockfile = true` (or `dynamodb_table = devops-g9-iac-tflock`).
 - **Backend excluded from workload destruction:** the bucket and lock table live in a
   separate root module/state from `infra/environments/lab/`, so `terraform destroy` run
   against the workload state can never touch them.
@@ -316,7 +340,7 @@ Application change
 
 - The **image pipeline** (extends the existing `.github/workflows/container-ci-cd.yml`)
   builds and pushes a Git-SHA-tagged image to each service's ECR repo
-  (`devops-g9-service-a:<sha>`, etc.) on every merge to `main`. It never touches
+  (`devops-g9-iac-service-a:<sha>`, etc.) on every merge to `main`. It never touches
   Terraform/OpenTofu state and never applies infrastructure changes.
 - **IaC** declares which already-published SHA is deployed via a per-service module
   input (e.g. `service_a_image_tag`). Changing that value is a reviewed, versioned Git
@@ -335,9 +359,19 @@ Application change
 ## Open items before this Gate 1 is ready to submit for review
 
 1. **Resolve Edge 1** — decide with Robert whether SG-7 (C→A callback) is an approved
-   contract extension or whether the app needs to drop the synchronous callback.
-2. **Fill in the ownership map** — replace the `*unassigned*` placeholders once the group
-   assigns Service A/B/C, Platform, and Release owners (and plan the rotation for Cycle
-   2/3 if this is a 3-person team).
+   contract extension or whether the app needs to drop the synchronous callback. Now
+   backed by real evidence: the manual build hit this exact failure live (Scar 1).
+2. **Fill in the ownership map** — Service A/B/C owners are still `*unassigned*`; Platform
+   (Mitingi Joy) and Release (Emebet Girmay) are filled in. Plan the rotation for Cycle
+   2/3 if this is a 3-person team.
 3. Confirm the group's Terraform vs OpenTofu choice and the exact CLI/provider versions
    to pin (not yet decided in this draft).
+4. **Verify the `group9.internal` Cloud Map namespace collision.** The manual build
+   already created an HTTP namespace named `group9.internal` in this account/Region, and
+   the assignment mandates that exact literal name for the new build too — but the
+   assignment also requires both builds to run simultaneously. Need to confirm before
+   `apply`: does AWS Cloud Map allow two separate namespaces with the same name in one
+   account (they'd have different namespace IDs), or will the new build's
+   `aws:CreateHttpNamespace` collide/conflict with the existing one? If it can't
+   coexist, escalate to Robert — this is a spec-level conflict (mandated exact name vs.
+   mandated dual-cluster coexistence), not something this design can resolve alone.
