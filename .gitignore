@@ -39,3 +39,18 @@ htmlcov/
 docs/BEGINNER_GUIDE.md
 # docs/CONTAINER_VALIDATION.md
 docs/RUNNING_AND_TESTING.md
+
+# Terraform / OpenTofu — never commit state, plans, or secret vars.
+# The dependency lock file (.terraform.lock.hcl) is NOT ignored — it must be committed.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
