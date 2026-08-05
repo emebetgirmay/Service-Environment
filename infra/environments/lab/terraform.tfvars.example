@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+# Never commit terraform.tfvars itself.
+
+owner_tags = {
+  platform  = "Mitingi Joy"
+  release   = "Emebet Girmay"
+  service_a = "unassigned" # replace once the group assigns Service A
+  service_b = "unassigned" # replace once the group assigns Service B
+  service_c = "unassigned" # replace once the group assigns Service C
+}
+
+# Each service's ECR repo is created by its own module instance — these are
+# just the tag of an image already pushed there. "latest" is rejected.
+# See docs/iac/deployment-sequence.md for the first-time bootstrap order
+# (repos must exist and have an image pushed before this apply can succeed).
+service_a_image_tag = "REPLACE_WITH_SHA"
+service_b_image_tag = "REPLACE_WITH_SHA"
+service_c_image_tag = "REPLACE_WITH_SHA"

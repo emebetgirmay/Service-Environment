@@ -59,6 +59,16 @@ Service Connect namespace `group9.internal` (platform-owned) backs the `service-
 `service-c` DNS names above. Service A is the only service registered against the ALB
 target group; B and C are reachable only via Service Connect inside the mesh.
 
+**Note on dependency types:** the diagram above shows *creation* order (what
+Terraform must build before what) collapsed together with *runtime* order (what must
+be reachable while the app is running). Those aren't the same thing — a clean
+`terraform apply` only proves the creation dependencies held; it proves nothing about
+whether the app actually works end to end. See
+[`docs/iac/deployment-sequence.md`](./deployment-sequence.md) for the full
+creation/runtime/operational breakdown and the actual first-deployment command sequence
+(ECR repos have to exist and hold a real image before the ECS services that reference
+them can go healthy — a genuine two-pass bootstrap, not a modeling shortcut).
+
 ### Ownership map
 
 | Area | AWS / IaC resources owned | Owner (role) | Owner (person) |
@@ -142,7 +152,9 @@ API, it will fail silently (connection timeout, no NAT path) until the team adds
 a NAT Gateway or another AWS-service-specific endpoint. This is an accepted, documented
 constraint, not an oversight — revisit if scope grows. This choice doubles as the
 group's Cost-Aware Design badge candidate (no NAT Gateway = no hourly + per-GB NAT
-charge in a lab environment that's destroyed/rebuilt three times).
+charge in a lab environment that's destroyed/rebuilt three times). See
+[`docs/iac/deployment-sequence.md`](./deployment-sequence.md) for what specifically
+would change about this decision in a production deployment.
 
 ---
 
@@ -353,6 +365,11 @@ Application change
 - `latest` is rejected by construction — every declared tag must match an
   immutable-SHA/digest format (this is also the group's Immutable Release badge
   candidate; see decision card 4 in the companion file for the validation approach).
+  Enforced twice, at two different layers: a Terraform variable validation rejects
+  `latest`/non-SHA tags before anything reaches AWS, and each ECR repository is created
+  with `image_tag_mutability = "IMMUTABLE"` — a registry-level backstop that makes AWS
+  itself reject any attempt to push a different image under a tag that already exists,
+  independent of whether the Terraform-side check was somehow bypassed.
 
 ---
 
