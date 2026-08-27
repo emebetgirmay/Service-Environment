@@ -23,6 +23,7 @@ module "network" {
   azs                  = local.azs
   public_subnet_cidrs  = local.public_subnet_cidrs
   private_subnet_cidrs = local.private_subnet_cidrs
+  enable_nat_gateway   = var.enable_nat_gateway
   tags                 = merge(local.common_tags, { owner = var.owner_tags["platform"] })
 }
 
@@ -62,6 +63,7 @@ module "service_a" {
   image_tag                     = var.service_a_image_tag
   desired_count                 = 2
   alb_target_group_arn          = module.alb.target_group_arn
+  allow_public_egress           = var.enable_nat_gateway
 
   environment = {
     PYTHONUNBUFFERED = "1"
@@ -87,6 +89,7 @@ module "service_b" {
   container_port                = 3002
   image_tag                     = var.service_b_image_tag
   desired_count                 = 1
+  allow_public_egress           = var.enable_nat_gateway
 
   environment = {
     PYTHONUNBUFFERED = "1"
@@ -112,6 +115,7 @@ module "service_c" {
   container_port                = 3003
   image_tag                     = var.service_c_image_tag
   desired_count                 = 1
+  allow_public_egress           = var.enable_nat_gateway
 
   environment = {
     PYTHONUNBUFFERED = "1"

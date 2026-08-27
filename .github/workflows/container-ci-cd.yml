@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Group 9 is assigned eu-north-1 only — must match infra/ Region rule.
+  AWS_REGION: eu-north-1
+
 jobs:
   verify:
     name: Verify code, build, and containers
@@ -134,3 +138,92 @@ jobs:
       - name: Stop Compose stack
         if: always()
         run: docker compose down -v
+
+  # ---------------------------------------------------------------------
+  # Publish SHA-tagged images to the new account's ECR repos.
+  #
+  # CI has *build* authority only (Gate 1 design §8): this job pushes an
+  # immutable <git-sha> image per service and stops. It never runs
+  # Terraform and never deploys — the Release owner bumps the image tag in
+  # infra/environments/lab/terraform.tfvars and applies to roll it out.
+  #
+  # Auth is GitHub OIDC into the role created by infra/bootstrap
+  # (github-oidc.tf). Set the role ARN as repo variable AWS_DEPLOY_ROLE_ARN
+  # (Settings → Secrets and variables → Actions → Variables). No long-lived
+  # AWS keys are stored in GitHub.
+  # ---------------------------------------------------------------------
+  push-images:
+    name: Push image to ECR (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    needs: [verify, verify-compose]
+    # Publish only from main — on merge, or a manual run of the workflow on main.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+
+    permissions:
+      contents: read
+      id-token: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: service-a
+            ecr_repo: devops-g9-iac-service-a
+          - service: service-b
+            ecr_repo: devops-g9-iac-service-b
+          - service: service-c
+            ecr_repo: devops-g9-iac-service-c
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: ${{ matrix.ecr_repo }}
+          TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE="$REGISTRY/$REPO:$TAG"
+
+          # ECR repos are IMMUTABLE — a re-run for a SHA already pushed must
+          # not try to push again (it would fail). Skip if the tag exists.
+          if aws ecr describe-images \
+                --repository-name "$REPO" \
+                --image-ids imageTag="$TAG" \
+                --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "$IMAGE already present — nothing to push."
+            exit 0
+          fi
+
+          docker build -t "$IMAGE" -f "${{ matrix.service }}/Dockerfile" .
+          docker push "$IMAGE"
+          echo "Pushed $IMAGE"
+
+      - name: Summary
+        env:
+          REPO: ${{ matrix.ecr_repo }}
+          TAG: ${{ github.sha }}
+        run: |
+          {
+            echo "### ${{ matrix.service }} image published"
+            echo ""
+            echo "- Repo: \`$REPO\`"
+            echo "- Tag: \`$TAG\`"
+            echo ""
+            echo "To deploy: set \`${{ matrix.service }}_image_tag = \"$TAG\"\` in"
+            echo "\`infra/environments/lab/terraform.tfvars\`, then \`terraform apply\`."
+          } >> "$GITHUB_STEP_SUMMARY"

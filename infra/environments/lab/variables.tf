@@ -40,3 +40,13 @@ variable "service_b_image_tag" {
 variable "service_c_image_tag" {
   type = string
 }
+
+# --- Escape hatch: NAT Gateway instead of endpoint-only egress ----------
+# Default false = the Gate 1 NAT-free posture. Set true only where
+# interface-endpoint private DNS for ECR isn't honoured by the VPC (the
+# shared DevOpsCohort account) and image pulls therefore resolve to public
+# ECR IPs with no route. See modules/network/variables.tf for the detail.
+variable "enable_nat_gateway" {
+  type    = bool
+  default = false
+}

@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars (gitignored) and adjust for the target account.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# The shared DevOpsCohort account (240462142849) already has the GitHub
+# OIDC provider, and the group's permission set can't create OIDC providers
+# (iam:CreateOpenIDConnectProvider is denied) — only roles named
+# devops-g9-*. So here we reuse the existing provider and let this stack
+# create just the CI role.
+#
+# In a normal standalone account, delete this file / set create_github_oidc
+# back to true and the stack creates the provider itself.
+
+create_github_oidc       = false
+github_oidc_provider_arn  = "arn:aws:iam::240462142849:oidc-provider/token.actions.githubusercontent.com"
+
+# github_repo defaults to "emebetgirmay/Service-Environment" — override if
+# the remote differs.

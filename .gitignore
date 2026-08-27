@@ -48,6 +48,11 @@ docs/RUNNING_AND_TESTING.md
 *.tfplan
 *.tfvars
 !*.tfvars.example
+
+# Backend config carries the per-account state bucket name — supplied at
+# `terraform init` time, not committed. The .example template IS committed.
+backend.hcl
+!backend.hcl.example
 crash.log
 crash.*.log
 override.tf
