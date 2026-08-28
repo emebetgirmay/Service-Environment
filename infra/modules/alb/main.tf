@@ -4,7 +4,7 @@
 # security group exists (avoids a circular module dependency).
 resource "aws_security_group" "alb" {
   name_prefix = "${var.name_prefix}-sg-alb-"
-  description = "ALB — inbound 80 from the internet; egress to Service A added in root module"
+  description = "ALB - inbound 80 from the internet; egress to Service A added in root module"
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, { Name = "${var.name_prefix}-sg-alb" })
@@ -16,7 +16,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_vpc_security_group_ingress_rule" "alb_http_from_internet" {
   security_group_id = aws_security_group.alb.id
-  description       = "Internet -> ALB :80"
+  description       = "Internet to ALB :80"
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
   to_port           = 80

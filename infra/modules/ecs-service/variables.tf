@@ -97,3 +97,9 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "allow_public_egress" {
+  description = "Add a 0.0.0.0/0:443 egress rule to this service's SG. Set true only alongside a NAT Gateway, where interface-endpoint private DNS isn't usable. See modules/network/variables.tf enable_nat_gateway."
+  type        = bool
+  default     = false
+}

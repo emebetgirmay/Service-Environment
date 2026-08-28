@@ -14,3 +14,35 @@ variable "state_bucket_name" {
   type        = string
   default     = null
 }
+
+# --- GitHub Actions OIDC ------------------------------------------------
+# The CI pipeline (.github/workflows/container-ci-cd.yml) authenticates to
+# this account with short-lived credentials via GitHub's OIDC provider —
+# no long-lived IAM access keys stored as GitHub secrets. This stack
+# creates the OIDC provider + the role CI assumes. Its permissions are
+# scoped to pushing images to the devops-g9-iac-* ECR repos only; it has
+# no Terraform/state access (IaC keeps deploy authority — see
+# docs/iac/gate1-design.md section 8).
+
+variable "create_github_oidc" {
+  description = "Create the GitHub OIDC provider + CI deploy role. Set false if the provider already exists in the account (only one per account is allowed)."
+  type        = bool
+  default     = true
+}
+
+variable "github_repo" {
+  description = "owner/repo allowed to assume the CI deploy role via OIDC."
+  type        = string
+  default     = "emebetgirmay/Service-Environment"
+
+  validation {
+    condition     = can(regex("^[^/]+/[^/]+$", var.github_repo))
+    error_message = "github_repo must be in 'owner/repo' form."
+  }
+}
+
+variable "github_oidc_provider_arn" {
+  description = "ARN of a pre-existing GitHub OIDC provider to reuse when create_github_oidc = false. Ignored when create_github_oidc = true."
+  type        = string
+  default     = null
+}

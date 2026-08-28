@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "ecs_exec" {
 # three times in root.
 resource "aws_security_group" "this" {
   name_prefix = "${var.name_prefix}-sg-svc-${var.short_name}-"
-  description = "${var.service_name} — ingress wired in root module; egress limited to VPC endpoints + downstream service"
+  description = "${var.service_name} - ingress wired in root module; egress limited to VPC endpoints + downstream service"
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, { Name = "${var.name_prefix}-sg-svc-${var.short_name}" })
@@ -70,7 +70,7 @@ resource "aws_security_group" "this" {
 
 resource "aws_vpc_security_group_egress_rule" "to_vpce" {
   security_group_id            = aws_security_group.this.id
-  description                  = "${var.service_name} -> VPC endpoints (ECR/logs/SSM)"
+  description                  = "${var.service_name} to VPC endpoints (ECR/logs/SSM)"
   referenced_security_group_id = var.vpce_security_group_id
   from_port                    = 443
   to_port                      = 443
@@ -79,11 +79,27 @@ resource "aws_vpc_security_group_egress_rule" "to_vpce" {
 
 resource "aws_vpc_security_group_ingress_rule" "vpce_from_this" {
   security_group_id            = var.vpce_security_group_id
-  description                  = "${var.service_name} -> VPC endpoints :443"
+  description                  = "${var.service_name} to VPC endpoints :443"
   referenced_security_group_id = aws_security_group.this.id
   from_port                    = 443
   to_port                      = 443
   ip_protocol                  = "tcp"
+}
+
+# Broad egress, only in NAT mode (var.allow_public_egress). The tight
+# egress above assumes image/log/SSM traffic reaches AWS via the interface
+# endpoints. When those aren't usable (shared account: endpoint private DNS
+# not honoured) and a NAT Gateway is the egress path instead, the tasks
+# need to reach ECR/CloudWatch on their *public* IPs, which the endpoint-SG
+# rule doesn't cover.
+resource "aws_vpc_security_group_egress_rule" "public_https" {
+  count             = var.allow_public_egress ? 1 : 0
+  security_group_id = aws_security_group.this.id
+  description       = "${var.service_name} HTTPS to AWS APIs via NAT"
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
 }
 
 # --- ECR repository ---------------------------------------------------

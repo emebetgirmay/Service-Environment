@@ -38,3 +38,19 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_nat_gateway" {
+  description = <<-EOT
+    When true, add a single NAT Gateway (in the first public subnet) and a
+    0.0.0.0/0 route from the private route table to it, giving Fargate tasks
+    outbound internet.
+
+    The Gate 1 design deliberately runs NAT-free (VPC endpoints only) as a
+    cost-aware choice. This switch exists because the shared DevOpsCohort
+    account's VPC does not honour interface-endpoint private DNS for ECR, so
+    image pulls resolve to public ECR IPs with no route to them. Turning
+    this on is a documented deviation, not the default posture.
+  EOT
+  type        = bool
+  default     = false
+}

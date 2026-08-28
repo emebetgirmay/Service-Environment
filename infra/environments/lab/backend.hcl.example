@@ -1,0 +1,10 @@
+# Copy to backend.hcl (gitignored) and set the bucket for the target account.
+#
+#   cp backend.hcl.example backend.hcl
+#   terraform init -reconfigure -backend-config=backend.hcl
+#
+# The bucket name is an output of the infra/bootstrap stack:
+#   cd ../../bootstrap && terraform output state_bucket_name
+#
+# Format is always devops-g9-iac-tfstate-<account-id>.
+bucket = "devops-g9-iac-tfstate-REPLACE_WITH_NEW_ACCOUNT_ID"
